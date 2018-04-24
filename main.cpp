@@ -1,39 +1,21 @@
 #include <iostream>
 #include <string.h>
-#include "help.cpp"
-#include "suffixtree.cpp"
 #include <vector>
+#include "readmap.cpp"
 using namespace std;
 
 int main(int argc, char* argv[])
 {
 	string header;
 	string sequence;
-	string alphabet;
 
-	determineArgs(argv[1], argv[2], &header, &sequence, &alphabet);
-	/* cout << header << endl;
-	cout << sequence << endl;
-	cout << alphabet << endl << endl; */
+	ReadMap *readMap = new ReadMap();
 
-	SuffixTree *suffixTree = new SuffixTree(sequence);
-	suffixTree->construction();
-	/* cout << endl << endl; */
-
-	/* suffixTree->dfsPrint();
-	cout << endl; */
-
-	/* suffixTree->dfsEnumerate();
+	/* for(int i = 0; i < readMap->mSuffixTree->mNumLeaves; i++)
+		cout << readMap->mSuffixTree->mList[i] << endl;
 	cout << endl << endl; */
 
-	suffixTree->dfsBWT();
-	/* cout << endl << endl; */
-
-	/* suffixTree->dfsRepeat();
-	cout << endl; */
-
-	/* cout << sequence.length() << endl;
-	cout << suffixTree->mNumLeaves - 1 << endl; */
+	readMap->mapReads(argv[2]);
 
 	return 0;
 }

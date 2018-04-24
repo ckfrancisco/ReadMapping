@@ -96,6 +96,7 @@ class Node
 class SuffixTree
 {
 	public:
+		string mHeader;
 		string mSequence;
 		Node *mRoot;
 		int mNumInternals;
@@ -104,10 +105,10 @@ class SuffixTree
 		int *mList;
 		int mNextIndex;
 		int mX;
-		Node *mDeepestNode;
 
-		SuffixTree(string sequence, int x)
+		SuffixTree(string header, string sequence, int x)
 		{
+			mHeader = header;
 			mSequence = sequence + "$";
 
 			mRoot = new Node(-1, 0, 0, 0, mRoot, mRoot);
@@ -124,7 +125,6 @@ class SuffixTree
 
 			mNextIndex = 0;
 			mX = x;
-			mDeepestNode = mRoot;
 		}
 
 		~SuffixTree()
@@ -445,7 +445,7 @@ class SuffixTree
 
 		void dfsPrepareSTHelper(Node *n)
 		{
-			if(n->mId > 0)
+			if(n->mId >= 0)
 			{
 				mList[mNextIndex] = n->mId;
 
@@ -476,7 +476,6 @@ class SuffixTree
 			Node* n = mRoot;
 			int pRead = 0;
 			Node* deepestNode = mRoot;
-			int index = 0;
 
 			while(sRead->length() != pRead)
 			{
@@ -514,22 +513,26 @@ class SuffixTree
 					// 4: break point found
 					if(i < (*it)->mLength)
 					{
-						if(n->mStringDepth >= mX && mDeepestNode->mStringDepth < n->mStringDepth)
+						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
 						{
-							mDeepestNode = n;
+							deepestNode = n;
 						}
 
-						index++;
-						n = mRoot;
-						pRead = index;
+						n = n->mSuffixLink;
 					}
 
 					// 4: break point not found (edge exhausted)
 					else
 					{
 						// 5: continue traversal from child node via loop
-						pRead = pRead + i;			
+						pRead = pRead + i;		
 						n = (*it);
+
+						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
+						{
+							deepestNode = n;
+						}
+
 						continue;
 					}
 				}
@@ -537,17 +540,15 @@ class SuffixTree
 				// 2: edge not found
 				else
 				{
-					if(n->mStringDepth >= mX && mDeepestNode->mStringDepth < n->mStringDepth)
+					if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
 					{
-						mDeepestNode = n;
+						deepestNode = n;
 					}
 
-					index++;
-					n = mRoot;
-					pRead = index;
+					n = n->mSuffixLink;
 				}
 			}
 
-			
+			return deepestNode;
 		}
 };
