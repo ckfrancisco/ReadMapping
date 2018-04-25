@@ -7,18 +7,22 @@
 using namespace std;
 
 typedef struct stats {
-	string mHeader = "";
-	int mNSequences = 0;
-	int mLength = 0;
-	int mAvgLength = 0;
-	int mNEmpty = 0;
-	int mLongest = 0;
-	int mShortest = 0;
+	string mHeader;
+	int mNSequences;
+	int mLength;
+	int mAvgLength;
+	int mNEmpty;
+	int mLongest;
+	int mShortest;
 }Stats;
 
 class ReadMap
 {
 	public:
+		string mGenomeFile;
+		string mReadsFile;
+		string mAlphabetFile;
+
 		SuffixTree *mSuffixTree;
 		LocalAlignment *mLocalAlignment;
 
@@ -46,10 +50,44 @@ class ReadMap
 
 		}
 
-		void mapReads(string genomeFile, string readsFile)
+		void determineArgs(int agrc, char* argv[])
+		{
+			mGenomeFile = argv[1];
+			mReadsFile = argv[2];
+			mAlphabetFile = argv[3];
+		}
+
+		void constructSuffixTree()
+		{
+			ifstream genomeStream;
+
+			string header;
+			string sequence;
+
+			genomeStream.open(mGenomeFile);
+			getline(genomeStream, header);
+			header = header.substr(1);
+
+			string tmp;
+			while(!genomeStream.eof())
+			{
+				genomeStream >> tmp;
+				sequence += tmp;
+			}
+
+			mSuffixTree = new SuffixTree(header, sequence, 0);
+			mSuffixTree->construction();
+		}
+
+		void prepareSuffixTree()
+		{
+			mSuffixTree->dfsPrepareST();
+		}
+
+		void mapReads()
 		{
 			ifstream readsStream;
-			readsStream.open(readsFile);
+			readsStream.open(mReadsFile);
 
 			string rHeader;
 			string rSequence;
@@ -91,13 +129,14 @@ class ReadMap
 						end = mSuffixTree->mSequence.length();
 
 					LocalAlignment *localAlignment = new LocalAlignment(1, 1, -2, -5, -1,
-						"Genome", mSuffixTree->mSequence.substr(0, mSuffixTree->mSequence.length() - 1), mSuffixTree->mSequence.length(),
-						"Read", rSequence, rSequence.length());
+						mSuffixTree->mHeader, mSuffixTree->mSequence.substr(0, mSuffixTree->mSequence.length() - 1), mSuffixTree->mSequence.length(),
+						rHeader, rSequence, rSequence.length());
 
 					localAlignment->createTable();
 					localAlignment->initialize();
 					localAlignment->recurrence();
 					localAlignment->retrace();
+					// localAlignment->printScore();
 
 					percentIdenity = localAlignment->mNMatches / localAlignment->mLen;
 					lengthCoverage = localAlignment->mLen / rSequence.length();
@@ -106,7 +145,6 @@ class ReadMap
 					{
 
 					}
-
 				}
 			}
 		}

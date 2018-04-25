@@ -6,16 +6,16 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	string header;
-	string sequence;
-
 	ReadMap *readMap = new ReadMap();
+	readMap->determineArgs(argc, argv);
+	readMap->constructSuffixTree();
+	// readMap->mSuffixTree->dfsBWT();
+	// readMap->prepareSuffixTree();
+	// readMap->mapReads();
 
-	/* for(int i = 0; i < readMap->mSuffixTree->mNumLeaves; i++)
-		cout << readMap->mSuffixTree->mList[i] << endl;
-	cout << endl << endl; */
-
-	readMap->mapReads(argv[2]);
+	// for(int i = 0; i < readMap->mSuffixTree->mNumLeaves; i++)
+	// 	cout << readMap->mSuffixTree->mList[i] << endl;
+	// cout << endl << endl;
 
 	return 0;
 }
