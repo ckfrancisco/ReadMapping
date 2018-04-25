@@ -12,7 +12,9 @@ typedef struct stats {
 	int mLength = 0;
 	int mAvgLength = 0;
 	int mNEmpty = 0;
+	string mLongestHeader = "";
 	int mLongest = 0;
+	string mShortestHeader = "";
 	int mShortest = 0;
 }Stats;
 
@@ -75,14 +77,50 @@ class ReadMap
 				sequence += tmp;
 			}
 
+			mGenomeStats.mHeader = mGenomeFile;
+			mGenomeStats.mNSequences = 1; 
+			mGenomeStats.mLength = sequence.length();
+			mGenomeStats.mAvgLength = sequence.length();
+			mGenomeStats.mNEmpty = 0;
+			mGenomeStats.mLongestHeader = header;
+			mGenomeStats.mLongest = sequence.length();
+			mGenomeStats.mShortestHeader = header;
+			mGenomeStats.mShortest = sequence.length();
+
+			ofstream genomeStatsStream;
+			genomeStatsStream.open("GenomeStatistics.txt");
+
+			genomeStatsStream << "Report for " << mGenomeStats.mHeader << ":" << endl;
+			genomeStatsStream << "Number of sequences  = " << mGenomeStats.mNSequences << endl;
+			genomeStatsStream << "Total length =  " << mGenomeStats.mLength << endl;
+			genomeStatsStream << "Average length of sequences = " << mGenomeStats.mAvgLength << endl;
+			genomeStatsStream << "Number of empty sequences = " << mGenomeStats.mNEmpty << endl;
+			genomeStatsStream << "Longest length of a sequence = " << mGenomeStats.mLongest << endl;
+			genomeStatsStream << "	>" << mGenomeStats.mLongestHeader << endl;
+			genomeStatsStream << "Shortest length of a sequence = " << mGenomeStats.mShortest << endl;
+			genomeStatsStream << "	>" << mGenomeStats.mShortestHeader << endl;
+
 			mSuffixTree = new SuffixTree(header, sequence, 0);
 			mSuffixTree->construction();
+
+			cout << "TREE CONSTRUCTED" << endl;
+
+			genomeStream.close();
+			genomeStatsStream.close();
 		}
 
-		void mapReads(string genomeFile, string readsFile)
+		void prepareSuffixTree()
+		{
+			mSuffixTree->dfsPrepareST();
+		}
+
+		void mapReads()
 		{
 			ifstream readsStream;
-			readsStream.open(readsFile);
+			readsStream.open(mReadsFile);
+
+			ofstream readsMappingStream;
+			readsMappingStream.open("MappingResults.txt");
 
 			string rHeader;
 			string rSequence;
@@ -93,14 +131,18 @@ class ReadMap
 			int end = 0;
 			int percentIdenity = 0;
 			int lengthCoverage = 0;
+			int nAlignments = 0;
+
+			mReadsStats.mHeader = mReadsFile;
 
 			while(!readsStream.eof())
 			{
-				getline(readsStream, rHeader);
-				rHeader = rHeader.substr(1);
-				getline(readsStream, rSequence);
+				int bestLengthCoverage = -1;
+				int bestStartIndex = -1;
+				int bestEndIndex = -1;
 
-				
+				getline(readsStream, rHeader);
+				getline(readsStream, rSequence);
 
 				deepestNode = mSuffixTree->findLoc(&rSequence);
 
@@ -112,19 +154,42 @@ class ReadMap
 				}
 
 				cout << endl; */
+						
+				mReadsStats.mNSequences++; 
+				mReadsStats.mLength += rSequence.length();
+
+				mReadsStats.mNEmpty = 0;
+
+				if(mReadsStats.mLongest < rSequence.length())
+				{
+					mReadsStats.mLongestHeader = rHeader;
+					mReadsStats.mLongest = rSequence.length();
+				}
+
+				if(mReadsStats.mShortest > rSequence.length())
+				{
+					mReadsStats.mShortestHeader = rHeader;
+					mReadsStats.mShortest = rSequence.length();
+				}
+
+				cout << "SEQUENCE #" << mReadsStats.mNSequences << endl;
 
 				for(int i = deepestNode->mStartIndex; i <= deepestNode->mEndIndex; i++)
 				{
-					start = i - rSequence.length();
-					end = i + rSequence.length();
+					nAlignments++;
 
-					if(start < 0)
-						start = 0;
-					if(end > mSuffixTree->mSequence.length())
-						end = mSuffixTree->mSequence.length();
+					cout << "SEQUENCE #" << mReadsStats.mNSequences << " " << nAlignments << endl;
+
+					int startIndex = mSuffixTree->mList[i] - rSequence.length();
+					int endIndex = mSuffixTree->mList[i] + rSequence.length();
+
+					if(startIndex < 0)
+						startIndex = 0;
+					if(endIndex > mSuffixTree->mSequence.length())
+						endIndex = mSuffixTree->mSequence.length();
 
 					LocalAlignment *localAlignment = new LocalAlignment(1, 1, -2, -5, -1,
-						"Genome", mSuffixTree->mSequence.substr(0, mSuffixTree->mSequence.length() - 1), mSuffixTree->mSequence.length(),
+						"Genome", mSuffixTree->mSequence.substr(startIndex, endIndex - startIndex), endIndex - startIndex,
 						"Read", rSequence, rSequence.length());
 
 					localAlignment->createTable();
@@ -132,15 +197,44 @@ class ReadMap
 					localAlignment->recurrence();
 					localAlignment->retrace();
 
-					percentIdenity = localAlignment->mNMatches / localAlignment->mLen;
-					lengthCoverage = localAlignment->mLen / rSequence.length();
+					int percentIdenity = localAlignment->mNMatches / localAlignment->mLen;
+					int lengthCoverage = localAlignment->mLen / rSequence.length();
 
 					if(percentIdenity >= 0.9 && lengthCoverage >= 0.8)
 					{
-
+						if(bestLengthCoverage < lengthCoverage)
+						{
+							bestLengthCoverage = lengthCoverage;
+							bestStartIndex = startIndex;
+							bestEndIndex = endIndex;
+						}
 					}
 
+					else
+					{
+						mReadsStats.mNEmpty++;
+					}
+
+					free(localAlignment);
 				}
+
+				readsMappingStream << rHeader << " " << bestStartIndex << " " << bestEndIndex << endl;
 			}
+
+			ofstream readsStatsStream;
+			readsStatsStream.open("ReadsStatistics.txt");
+
+			readsStatsStream << "Report for " << mReadsStats.mHeader << ":" << endl;
+			readsStatsStream << "Number of sequences  = " << mReadsStats.mNSequences << endl;
+			readsStatsStream << "Total length =  " << mReadsStats.mLength << endl;
+			readsStatsStream << "Average length of sequences = " << mReadsStats.mAvgLength << endl;
+			readsStatsStream << "Number of empty sequences = " << mReadsStats.mNEmpty << endl;
+			readsStatsStream << "Longest length of a sequence = " << mReadsStats.mLongest << endl;
+			readsStatsStream << "	>" << mReadsStats.mLongestHeader << endl;
+			readsStatsStream << "Shortest length of a sequence = " << mReadsStats.mShortest << endl;
+			readsStatsStream << "	>" << mReadsStats.mShortestHeader << endl;
+
+			readsStream.close();
+			readsStatsStream.close();
 		}
 };

@@ -1,0 +1,9 @@
+Report for Peach_reference.fasta:
+Number of sequences  = 1
+Total length =  5362495
+Average length of sequences = 5362495
+Number of empty sequences = 0
+Longest length of a sequence = 5362495
+	>Peach_largeContig
+Shortest length of a sequence = 5362495
+	>Peach_largeContig

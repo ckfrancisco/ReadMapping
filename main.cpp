@@ -9,9 +9,8 @@ int main(int argc, char* argv[])
 	ReadMap *readMap = new ReadMap();
 	readMap->determineArgs(argc, argv);
 	readMap->constructSuffixTree();
-	// readMap->mSuffixTree->dfsBWT();
-	// readMap->prepareSuffixTree();
-	// readMap->mapReads();
+	readMap->prepareSuffixTree();
+	readMap->mapReads();
 
 	// for(int i = 0; i < readMap->mSuffixTree->mNumLeaves; i++)
 	// 	cout << readMap->mSuffixTree->mList[i] << endl;

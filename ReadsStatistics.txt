@@ -1,0 +1,9 @@
+Report for test.fasta:
+Number of sequences  = 50
+Total length =  5018
+Average length of sequences = 0
+Number of empty sequences = 2
+Longest length of a sequence = 104
+	>>READ_14_from_Peach_reference.fasta_AT_2658310
+Shortest length of a sequence = 0
+	>

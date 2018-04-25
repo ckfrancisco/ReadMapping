@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/main",
-            "args": ["s.fasta", "r.fasta", "dna.txt"],
+            "args": ["Peach_reference.fasta", "test.fasta", "dna.txt"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
