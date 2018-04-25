@@ -7,13 +7,13 @@
 using namespace std;
 
 typedef struct stats {
-	string mHeader;
-	int mNSequences;
-	int mLength;
-	int mAvgLength;
-	int mNEmpty;
-	int mLongest;
-	int mShortest;
+	string mHeader = "";
+	int mNSequences = 0;
+	int mLength = 0;
+	int mAvgLength = 0;
+	int mNEmpty = 0;
+	int mLongest = 0;
+	int mShortest = 0;
 }Stats;
 
 class ReadMap
@@ -79,15 +79,10 @@ class ReadMap
 			mSuffixTree->construction();
 		}
 
-		void prepareSuffixTree()
-		{
-			mSuffixTree->dfsPrepareST();
-		}
-
-		void mapReads()
+		void mapReads(string genomeFile, string readsFile)
 		{
 			ifstream readsStream;
-			readsStream.open(mReadsFile);
+			readsStream.open(readsFile);
 
 			string rHeader;
 			string rSequence;
@@ -129,14 +124,13 @@ class ReadMap
 						end = mSuffixTree->mSequence.length();
 
 					LocalAlignment *localAlignment = new LocalAlignment(1, 1, -2, -5, -1,
-						mSuffixTree->mHeader, mSuffixTree->mSequence.substr(0, mSuffixTree->mSequence.length() - 1), mSuffixTree->mSequence.length(),
-						rHeader, rSequence, rSequence.length());
+						"Genome", mSuffixTree->mSequence.substr(0, mSuffixTree->mSequence.length() - 1), mSuffixTree->mSequence.length(),
+						"Read", rSequence, rSequence.length());
 
 					localAlignment->createTable();
 					localAlignment->initialize();
 					localAlignment->recurrence();
 					localAlignment->retrace();
-					// localAlignment->printScore();
 
 					percentIdenity = localAlignment->mNMatches / localAlignment->mLen;
 					lengthCoverage = localAlignment->mLen / rSequence.length();
@@ -145,6 +139,7 @@ class ReadMap
 					{
 
 					}
+
 				}
 			}
 		}

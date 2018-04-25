@@ -15,13 +15,12 @@ class Node
 
 		Node *mParent;
 		Node *mSuffixLink;
-		Node *mChild;
-		Node *mSibling;
+		vector<Node*> mChildren;
 
 		int mStartIndex;
 		int mEndIndex;
 
-		Node(int id, int index, int length, int stringDepth, Node *parent, Node* suffixLink = NULL)
+		Node(int id, int index, int length, int stringDepth, Node *parent, Node *suffixLink = NULL)
 		{
 			mId = id;
 			mIndex = index;
@@ -29,8 +28,6 @@ class Node
 			mStringDepth = stringDepth;
 			mParent = parent;
 			mSuffixLink = suffixLink;
-			mChild = NULL;
-			mSibling = NULL;
 
 			mStartIndex = -1;
 			mEndIndex = -1;
@@ -49,59 +46,50 @@ class Node
 
 			Node *n = new Node(id, index, length, stringDepth, this);
 
-			if(mChild == NULL)
+			vector<Node*>::iterator it = mChildren.begin();
+
+			// determine lexicographic index
+			for(it; it != mChildren.end(); ++it)
 			{
-				mChild = n;
+				if((*sequence)[index] < (*sequence)[(*it)->mIndex])
+					break;
 			}
 
-			else if((*sequence)[index] < (*sequence)[mChild->mIndex])
-			{
-				n->mSibling = mChild;
-				mChild = n;
-			}
-
-			else
-			{
-				Node *prevChild = mChild;
-				Node *currChild = mChild->mSibling;
-
-				while(1)
-				{
-					if(!currChild || (*sequence)[index] < (*sequence)[currChild->mIndex])
-					{
-						n->mSibling = currChild;
-						prevChild->mSibling = n;
-						break;
-					}
-
-					prevChild = currChild;
-					currChild = currChild->mSibling;
-				}
-			}
+			mChildren.insert(it, n);
 			
 			return n;
 		}
 
-		Node* insertInternal(int id, int length, Node *swap)
+
+
+		Node* insertInternal(int id, int length, vector<Node*>::iterator it)
 		{
-			int index = swap->mIndex;
+			int index = (*it)->mIndex;
 			int stringDepth = mStringDepth + length;
 
-			Node *n = new Node(swap->mId, swap->mIndex + length, swap->mLength - length, swap->mStringDepth, swap);
-			n->mChild = swap->mChild;
+			Node *n = new Node(id, index, length, stringDepth, this);
+			Node *child = *it;
 
-			swap->mId = id;
-			swap->mIndex = index;
-			swap->mLength = length;
-			swap->mStringDepth = stringDepth;
-			swap->mChild = n;
-
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			mChildren.insert(it, n);
+			
+			// determine iterator position of child to remove
+			for(it = mChildren.begin(); it != mChildren.end(); ++it)
 			{
-				child->mParent = n;
+				if((*it) == child)
+				{
+					break;
+				}
 			}
 
-			return swap;
+			mChildren.erase(it);
+
+			child->mIndex += length;
+			child->mLength -= length;
+			child->mParent = n;
+
+			n->mChildren.push_back(child);
+
+			return n;
 		}
 };
 
@@ -154,58 +142,86 @@ class SuffixTree
 			Node *v = NULL;
 			Node *vp = NULL;
 
-			std::clock_t time_start;
-
 			// insert all of sequence's suffixes
 			for(int index = 0; index < mSequence.length(); index++)
 			{
-				findPath(mRoot, index);
+				u = n->mParent;
 
-				if(index % 10000 == 0)
+				if(u->mSuffixLink != NULL)
 				{
-					cout << index << "   " << (std::clock() - time_start) / (double) CLOCKS_PER_SEC << endl;
+					if(u != mRoot)
+					{
+						v = u->mSuffixLink;
+						n = findPath(v, index);
+					}
+
+					else
+					{
+						v = u->mSuffixLink;
+						n = findPath(v, index);
+					}
+				}
+
+				else
+				{
+					up = u->mParent;
+					vp = up->mSuffixLink;
+
+					if(up != mRoot)
+					{
+						v = nodeHops(vp, u->mIndex, u->mLength, 0);
+						u->mSuffixLink = v;
+						n = findPath(v, index);
+					}
+
+					else
+					{
+						v = nodeHops(vp, u->mIndex + 1, u->mLength - 1, 0);
+						u->mSuffixLink = v;
+						n = findPath(v, index);
+					}
 				}
 			}
 		}
 
 		Node* findPath(Node* n, int index)
 		{
-			Node *child = n->mChild;
+			vector<Node*>::iterator it = n->mChildren.begin();
 
 			// 1: iterate through children to find edge to traverse
-			for(child; child; child = child->mSibling)
+			for(it; it != n->mChildren.end(); ++it)
 			{
-				if(mSequence[child->mIndex] == mSequence[index + n->mStringDepth])
+				if(mSequence[(*it)->mIndex] == mSequence[index + n->mStringDepth])
 				{
 					break;
 				}
 
-				if(mSequence[child->mIndex] > mSequence[index + n->mStringDepth])
+				if(mSequence[(*it)->mIndex] > mSequence[index + n->mStringDepth])
 				{
-					child = NULL;
+					it = n->mChildren.end();
 					break;
 				}
 			}
 
 			// 2: edge found
-			if(child)
+			if(it != n->mChildren.end())
 			{
 				int i = 0;
 
 				// 3: iterate through edge to find break point
-				for(i; i < child->mLength; i++)
+				for(i; i < (*it)->mLength; i++)
 				{
-					if(mSequence[child->mIndex + i] != mSequence[index + n->mStringDepth + i])
+					if(mSequence[(*it)->mIndex + i] != mSequence[index + n->mStringDepth + i])
 					{
 						break;
 					}
 				}
 
 				// 4: break point found
-				if(i < child->mLength)
+				if(i < (*it)->mLength)
 				{
 					// 5: insert a new internal node
-					Node *internal = n->insertInternal(mNumInternals--, i, child);
+					Node *internal = n->insertInternal(mNumInternals--, i, it);
 					return internal->insertChild(&mSequence, mNumLeaves++, index);
 				}
 
@@ -213,7 +229,7 @@ class SuffixTree
 				else
 				{
 					// 5: continue traversal from child node via recursion
-					return findPath(child, index);
+					return findPath(*it, index);
 				}
 			}
 
@@ -228,7 +244,7 @@ class SuffixTree
 
 		Node* nodeHops(Node* n, int index, int length, int i)
 		{
-			Node *child = n->mChild;
+			vector<Node*>::iterator it = n->mChildren.begin();
 
 			if(length == 0)
 			{
@@ -236,29 +252,40 @@ class SuffixTree
 			}
 
 			// 1: iterate through children to find edge to traverse
-			for(Node *child = n->mChild; child; child = child->mSibling)
+			for(it; it != n->mChildren.end(); ++it)
 			{
- 				/* cout << mSequence[child->mIndex] << " " << mSequence[index + i] << endl; */
-				if(mSequence[child->mIndex] == mSequence[index + i])
+ 				/* cout << mSequence[(*it)->mIndex] << " " << mSequence[index + i] << endl; */
+				if(mSequence[(*it)->mIndex] == mSequence[index + i])
 				{	
 					// 2: recurse to next child node and return result
 
-					if(i + child->mLength == length)
+					if(i + (*it)->mLength == length)
 					{
-						return  child;
+						return  *it;
 					}
 
-					else if(length - i < child->mLength)
+					else if(length - i < (*it)->mLength)
 					{
-						return n->insertInternal(mNumInternals--, length - i, child);
+						return n->insertInternal(mNumInternals--, length - i, it);
 					}
 
 					else
 					{
-						return nodeHops(child, index, length, i + child->mLength);
+						return nodeHops(*it, index, length, i + (*it)->mLength);
 					}
 				}
 			}
+		}
+
+		void displayChildren(Node *n)
+		{
+			// iterate through children
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
+			{
+				cout << (*it)->mId << " ";
+			}
+
+			cout << endl;
 		}
 
 		void dfsEnumerate()
@@ -278,9 +305,9 @@ class SuffixTree
 				cout << endl;
 
 			// depth first search through children
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsEnumerateHelper(child, counter);
+				dfsEnumerateHelper(*it, counter);
 			}
 		}
 
@@ -292,7 +319,7 @@ class SuffixTree
 
 		void dfsPrintHelper(Node *n)
 		{
-			if(n->mChild == NULL)
+			if(n->mChildren.size() < 1)
 			{
 				cout << n->mId << " ";
 
@@ -306,9 +333,9 @@ class SuffixTree
 				return;
 			}
 
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsPrintHelper(child);
+				dfsPrintHelper(*it);
 			}
 		}
 
@@ -324,7 +351,7 @@ class SuffixTree
 
 		void dfsBWTHelper(Node *n, string *bwt, int *index)
 		{
-			if(n->mChild == NULL)
+			if(n->mChildren.size() < 1)
 			{
 				int sequenceIndex = n->mId;
 				sequenceIndex--;
@@ -337,9 +364,9 @@ class SuffixTree
 			}
 
 			// depth first search through children
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsBWTHelper(child, bwt, index);
+				dfsBWTHelper(*it, bwt, index);
 			}
 		}
 
@@ -375,7 +402,7 @@ class SuffixTree
 
 		void dfsRepeatHelper(Node *n, Node **lemrNode, vector<int> *lemrIndexes)
 		{
-			if(n->mChild == NULL)
+			if(n->mChildren.size() < 1)
 			{
 				return;
 			}
@@ -390,23 +417,23 @@ class SuffixTree
 				}
 			}
 
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsRepeatHelper(child, lemrNode, lemrIndexes);
+				dfsRepeatHelper(*it, lemrNode, lemrIndexes);
 			}
 		}
 
 		void dfsLemrIndexesHelper(Node *n, vector<int> *lemrIndexes)
 		{
-			if(n->mChild == NULL)
+			if(n->mChildren.size() < 1)
 			{
 				(*lemrIndexes).push_back(n->mId);
 				return;
 			}
 
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsLemrIndexesHelper(child, lemrIndexes);
+				dfsLemrIndexesHelper(*it, lemrIndexes);
 			}
 		}
 
@@ -432,19 +459,15 @@ class SuffixTree
 			}
 
 			// depth first search through children
-			for(Node* child = n->mChild; child; child = child->mSibling)
+			for(vector<Node*>::iterator it = n->mChildren.begin(); it != n->mChildren.end(); ++it)
 			{
-				dfsPrepareSTHelper(child);
+				dfsPrepareSTHelper(*it);
 			}
 
 			if(n->mStringDepth >= mX)
 				{
-					n->mStartIndex = n->mChild->mStartIndex;
-
-					Node* child = n->mChild;
-					for(child; child->mSibling != NULL; child = child->mSibling);
-
-					n->mEndIndex = child->mEndIndex;
+					n->mStartIndex = n->mChildren.front()->mStartIndex;
+					n->mEndIndex = n->mChildren.back()->mEndIndex;
 				}
 		}
 
@@ -456,39 +479,39 @@ class SuffixTree
 
 			while(sRead->length() != pRead)
 			{
-				Node* child = n->mChild;
+				vector<Node*>::iterator it = n->mChildren.begin();
 
 				// 1: iterate through children to find edge to traverse
-				for(child; child; child = child->mSibling)
+				for(it; it != n->mChildren.end(); ++it)
 				{
-					if(mSequence[child->mIndex] == (*sRead)[pRead])
+					if(mSequence[(*it)->mIndex] == (*sRead)[pRead])
 					{
 						break;
 					}
 
-					if(mSequence[child->mIndex] > (*sRead)[pRead])
+					if(mSequence[(*it)->mIndex] > (*sRead)[pRead])
 					{
-						child = NULL;
+						it = n->mChildren.end();
 						break;
 					}
 				}
 
 				// 2: edge found
-				if(child)
+				if(it != n->mChildren.end())
 				{
 					int i = 0;
 
 					// 3: iterate through edge to find break point
-					for(i; i < (child)->mLength; i++)
+					for(i; i < (*it)->mLength; i++)
 					{
-						if(mSequence[(child)->mIndex + i] != (*sRead)[pRead + i])
+						if(mSequence[(*it)->mIndex + i] != (*sRead)[pRead + i])
 						{
 							break;
 						}
 					}
 
 					// 4: break point found
-					if(i < (child)->mLength)
+					if(i < (*it)->mLength)
 					{
 						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
 						{
@@ -503,7 +526,7 @@ class SuffixTree
 					{
 						// 5: continue traversal from child node via loop
 						pRead = pRead + i;		
-						n = (child);
+						n = (*it);
 
 						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
 						{
