@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string.h>
 #include <vector>
+
 using namespace std;
 
 class Node
@@ -477,7 +478,7 @@ class SuffixTree
 			int pRead = 0;
 			Node* deepestNode = mRoot;
 
-			while(sRead->length() != pRead)
+			while(pRead <= sRead->length() - 1)
 			{
 				vector<Node*>::iterator it = n->mChildren.begin();
 
@@ -511,7 +512,7 @@ class SuffixTree
 					}
 
 					// 4: break point found
-					if(i < (*it)->mLength)
+					if(i < (*it)->mLength && (i != (*it)->mLength - 1 && mSequence[(*it)->mLength - 1] != '$'))
 					{
 						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
 						{
@@ -525,14 +526,14 @@ class SuffixTree
 					else
 					{
 						// 5: continue traversal from child node via loop
-						pRead = pRead + i;		
-						n = (*it);
+						pRead = pRead + i;
 
-						if(n->mStringDepth >= mX && deepestNode->mStringDepth < n->mStringDepth)
+						if((*it)->mStringDepth >= mX && deepestNode->mStringDepth < (*it)->mStringDepth)
 						{
-							deepestNode = n;
-						}
+							deepestNode = (*it);
+						}		
 
+						n = (*it);
 						continue;
 					}
 				}

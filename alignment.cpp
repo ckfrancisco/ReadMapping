@@ -88,7 +88,10 @@ class Alignment
 
 		~Alignment()
 		{
+			for(int i = 0; i < mM + 1; i++)
+				delete[] mTable[i];
 
+			delete[] mTable;
 		}
 
 		int createTable()

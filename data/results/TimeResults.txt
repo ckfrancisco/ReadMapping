@@ -1,0 +1,4 @@
+Construction time = 6.7614
+Preparation time = 0.95414
+Read Mapping time = 931.767
+Total time = 939.482

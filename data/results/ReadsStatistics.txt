@@ -1,0 +1,11 @@
+Report for data/Peach_simulated_reads.fasta:
+Number of sequences  = 500000
+Total length =  50000851
+Average length of sequences = 100.002
+Number of empty sequences = 35509
+Percentage of hits = 0.928982
+Longest length of a sequence = 104
+	>READ_14_from_Peach_reference.fasta_AT_2658310
+Shortest length of a sequence = 96
+	>READ_47_from_Peach_reference.fasta_AT_2287048
+Average alignments per read = 2.35237
